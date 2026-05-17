@@ -27,11 +27,31 @@ Use a small Ubuntu VPS with a public IPv4 address. Open these firewall ports:
 49152-65535/udp
 ```
 
-## Install
+## Fast install
+
+Point DNS first:
+
+```text
+turn.yourdomain.com -> your VPS IPv4 address
+```
+
+Then SSH into the VPS and run:
+
+```bash
+git clone https://github.com/Samurai12512/native-sync-room.git
+cd native-sync-room
+sudo ./scripts/install-coturn-ubuntu.sh turn.yourdomain.com syncuser 'replace-with-a-long-random-password' you@example.com
+```
+
+The script installs coturn, gets a Let's Encrypt certificate, configures TURN plus TURNS, opens common `ufw` ports when `ufw` exists, and restarts coturn when certificates renew.
+
+## Manual install
 
 ```bash
 sudo apt update
-sudo apt install -y coturn certbot
+sudo apt install -y coturn certbot curl
+sudo systemctl stop coturn || true
+sudo certbot certonly --standalone -d turn.yourdomain.com
 ```
 
 Enable coturn:
@@ -50,10 +70,18 @@ lt-cred-mech
 realm=turn.yourdomain.com
 server-name=turn.yourdomain.com
 user=syncuser:replace-with-a-long-random-password
+cert=/etc/letsencrypt/live/turn.yourdomain.com/fullchain.pem
+pkey=/etc/letsencrypt/live/turn.yourdomain.com/privkey.pem
 no-multicast-peers
 no-cli
 min-port=49152
 max-port=65535
+```
+
+If your VPS is behind one-to-one NAT, add:
+
+```text
+external-ip=YOUR_PUBLIC_IPV4
 ```
 
 If your VPS has a firewall:
@@ -74,6 +102,17 @@ sudo systemctl restart coturn
 sudo systemctl status coturn
 ```
 
+Restart coturn after certificate renewals:
+
+```bash
+sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/restart-coturn.sh >/dev/null <<'EOF'
+#!/usr/bin/env bash
+systemctl restart coturn
+EOF
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/restart-coturn.sh
+```
+
 ## Railway environment variables
 
 Set these on the Railway app:
@@ -87,5 +126,11 @@ TURN_CREDENTIAL=replace-with-a-long-random-password
 ## Test
 
 After Railway deploys, open your public app URL, start a room, share your screen, and have the remote viewer open the room link.
+
+To confirm the frontend has the TURN config, open:
+
+```text
+https://your-railway-domain/config.js
+```
 
 If it fails only on some networks, the usual causes are closed UDP relay ports, DNS pointing at the wrong machine, wrong TURN credentials, or missing TLS setup for `turns:`.

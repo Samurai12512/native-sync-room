@@ -43,6 +43,7 @@ More detailed setup:
 
 - Railway app deployment: `docs/railway.md`
 - Self-hosted coturn: `docs/coturn.md`
+- Railway steps after coturn: `docs/railway-after-coturn.md`
 - Ubuntu coturn helper script: `scripts/install-coturn-ubuntu.sh`
 
 After deployment, you will use a URL like:
