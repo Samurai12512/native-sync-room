@@ -32,11 +32,12 @@ let localStream = null;
 let monitorTimer = null;
 
 const bitrateLadder = [
-  { label: "720p", maxBitrate: 1_200_000 },
-  { label: "900p", maxBitrate: 2_000_000 },
-  { label: "1080p", maxBitrate: 3_200_000 },
-  { label: "1080p+", maxBitrate: 5_000_000 }
+  { label: "720p", maxBitrate: 2_500_000 },
+  { label: "1080p", maxBitrate: 5_000_000 },
+  { label: "1080p+", maxBitrate: 8_000_000 },
+  { label: "Ultra", maxBitrate: 12_000_000 }
 ];
+const defaultBitrateLevel = bitrateLadder.length - 1;
 
 const rtcConfig = {
   iceServers: window.NATIVE_SYNC_CONFIG?.iceServers || [
@@ -113,7 +114,8 @@ async function applyBitrate(peer, level) {
   params.degradationPreference = "balanced";
   params.encodings = params.encodings?.length ? params.encodings : [{}];
   params.encodings[0].maxBitrate = bitrateLadder[level].maxBitrate;
-  params.encodings[0].maxFramerate = 30;
+  params.encodings[0].maxFramerate = 60;
+  params.encodings[0].scaleResolutionDownBy = 1;
   await sender.setParameters(params);
 }
 
@@ -129,7 +131,7 @@ async function addLocalTracks(peer) {
     }
   }
 
-  await applyBitrate(peer, peerHealth.get(peer)?.level || 2);
+  await applyBitrate(peer, peerHealth.get(peer)?.level ?? defaultBitrateLevel);
 }
 
 function startHostMonitoring() {
@@ -139,7 +141,13 @@ function startHostMonitoring() {
     for (const [peerId, peer] of peers) {
       if (peer.connectionState === "closed") continue;
 
-      const health = peerHealth.get(peer) || { level: 2, rtt: 0, lastChange: 0 };
+      const health = peerHealth.get(peer) || {
+        level: defaultBitrateLevel,
+        rtt: 0,
+        lastChange: 0,
+        badSamples: 0,
+        goodSamples: 0
+      };
       const stats = await peer.getStats();
       let rtt = 0;
       let limitation = "none";
@@ -154,12 +162,17 @@ function startHostMonitoring() {
       });
 
       const now = Date.now();
-      const canChange = now - health.lastChange > 6000;
+      const canChange = now - health.lastChange > 9000;
       let nextLevel = health.level;
+      const isBad = rtt > 0.85 || limitation === "bandwidth";
+      const isGood = rtt > 0 && rtt < 0.25 && limitation === "none";
 
-      if (canChange && (rtt > 0.45 || limitation === "bandwidth" || limitation === "cpu")) {
+      health.badSamples = isBad ? health.badSamples + 1 : 0;
+      health.goodSamples = isGood ? health.goodSamples + 1 : 0;
+
+      if (canChange && health.badSamples >= 2) {
         nextLevel = Math.max(0, health.level - 1);
-      } else if (canChange && rtt > 0 && rtt < 0.18 && limitation === "none") {
+      } else if (canChange && health.goodSamples >= 3) {
         nextLevel = Math.min(bitrateLadder.length - 1, health.level + 1);
       }
 
@@ -167,6 +180,8 @@ function startHostMonitoring() {
       if (nextLevel !== health.level) {
         health.level = nextLevel;
         health.lastChange = now;
+        health.badSamples = 0;
+        health.goodSamples = 0;
         await applyBitrate(peer, nextLevel);
       }
 
@@ -217,7 +232,13 @@ function makePeerConnection(peerId) {
   };
 
   peers.set(peerId, peer);
-  peerHealth.set(peer, { level: 2, rtt: 0, lastChange: 0 });
+  peerHealth.set(peer, {
+    level: defaultBitrateLevel,
+    rtt: 0,
+    lastChange: 0,
+    badSamples: 0,
+    goodSamples: 0
+  });
   updatePeerStats();
   return peer;
 }
@@ -227,7 +248,7 @@ async function beginHostShare() {
 
   localStream = await navigator.mediaDevices.getDisplayMedia({
     video: {
-      frameRate: { ideal: 30, max: 30 },
+      frameRate: { ideal: 60, max: 60 },
       width: { ideal: 1920 },
       height: { ideal: 1080 }
     },
@@ -235,7 +256,7 @@ async function beginHostShare() {
   });
 
   localStream.getVideoTracks().forEach((track) => {
-    track.contentHint = "motion";
+    track.contentHint = "detail";
   });
 
   hostPreview.srcObject = localStream;

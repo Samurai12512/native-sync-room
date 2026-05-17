@@ -36,7 +36,7 @@ input {
 }
 
 .app-shell {
-  width: min(1180px, calc(100vw - 32px));
+  width: min(1280px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 28px 0;
 }
@@ -165,14 +165,17 @@ button:disabled {
 
 .room-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+  align-items: start;
   gap: 16px;
   padding: 16px;
+  overflow: hidden;
 }
 
 .stage {
   position: relative;
-  min-height: 520px;
+  width: 100%;
+  min-width: 0;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 8px;
@@ -241,6 +244,7 @@ video {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
 }
 
 .field-group label {
@@ -273,6 +277,7 @@ video {
 
 .stats-grid strong {
   font-size: 1.2rem;
+  overflow-wrap: anywhere;
 }
 
 .hidden {
@@ -365,10 +370,11 @@ video {
   }
 
   .room-panel {
-    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 300px);
   }
 
   .stage {
-    min-height: calc(100dvh - 118px);
+    height: calc(100dvh - 118px);
+    aspect-ratio: auto;
   }
 }
