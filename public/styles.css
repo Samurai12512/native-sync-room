@@ -26,6 +26,10 @@ body {
   color: var(--text);
 }
 
+body:has(.room-panel:not(.hidden)) {
+  min-height: 100dvh;
+}
+
 button,
 input {
   font: inherit;
@@ -169,6 +173,7 @@ button:disabled {
 .stage {
   position: relative;
   min-height: 520px;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   border-radius: 8px;
   background: #07090d;
@@ -180,6 +185,38 @@ video {
   height: 100%;
   object-fit: contain;
   background: #07090d;
+}
+
+.stage:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+}
+
+.stage:fullscreen video {
+  width: 100vw;
+  height: 100vh;
+}
+
+.stage-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.stage-button {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 20, 29, 0.78);
+  backdrop-filter: blur(10px);
+  padding: 10px 12px;
+}
+
+.stage-button:hover:not(:disabled) {
+  background: rgba(42, 49, 64, 0.88);
 }
 
 #hostPreview {
@@ -259,12 +296,79 @@ video {
   }
 
   .stage {
-    min-height: 340px;
+    min-height: auto;
+    aspect-ratio: 16 / 10;
   }
 
   .join-row,
   .copy-row,
   .host-controls {
     flex-direction: column;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .stats-grid div {
+    min-height: 72px;
+    padding: 12px;
+  }
+
+  .stats-grid strong {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    width: min(100vw - 20px, 1180px);
+    padding: 14px 0;
+  }
+
+  h1 {
+    font-size: 2.15rem;
+  }
+
+  .room-panel,
+  .start-panel {
+    padding: 10px;
+  }
+
+  .stage {
+    aspect-ratio: 16 / 11;
+  }
+
+  .stage-actions {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .stage-button {
+    flex: 1;
+    padding: 11px 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .topbar {
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  .room-panel {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .stage {
+    min-height: calc(100dvh - 118px);
   }
 }

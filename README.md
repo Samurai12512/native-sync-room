@@ -100,6 +100,8 @@ For serious use, put TLS certificates on coturn and use `turns:` as well as `tur
 - Uses Socket.IO only for room signaling.
 - Sends screen video and optional tab/system audio when the browser allows it.
 - Lets new viewers join an existing host stream automatically.
+- Adapts host bitrate per viewer using WebRTC connection stats.
+- Includes fullscreen viewing and responsive mobile layouts.
 
 ## Browser limits
 

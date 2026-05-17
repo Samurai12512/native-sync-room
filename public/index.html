@@ -31,6 +31,10 @@
         <div class="stage">
           <video id="viewerVideo" playsinline autoplay></video>
           <video id="hostPreview" playsinline autoplay muted></video>
+          <div class="stage-actions">
+            <button id="playButton" class="stage-button hidden" title="Play stream">Play</button>
+            <button id="fullscreenButton" class="stage-button" title="Fullscreen">Fullscreen</button>
+          </div>
           <div id="emptyState" class="empty-state">
             <strong>Waiting for the host stream</strong>
             <span>The video starts automatically when the host shares.</span>
@@ -67,6 +71,14 @@
             <div>
               <span>Quality</span>
               <strong id="qualityStat">Auto</strong>
+            </div>
+            <div>
+              <span>Delay</span>
+              <strong id="latencyStat">-</strong>
+            </div>
+            <div>
+              <span>Bitrate</span>
+              <strong id="bitrateStat">Auto</strong>
             </div>
           </div>
         </aside>
