@@ -101,7 +101,7 @@ For serious use, put TLS certificates on coturn and use `turns:` as well as `tur
 - Sends screen video and optional tab/system audio when the browser allows it.
 - Lets new viewers join an existing host stream automatically.
 - Adapts host bitrate per viewer using WebRTC connection stats.
-- Starts at high-quality 1080p/60 when the host browser and network allow it.
+- Starts at smooth HD and adjusts quality when WebRTC reports stutter, freezes, or bandwidth pressure.
 - Includes fullscreen viewing and responsive mobile layouts.
 
 ## Browser limits

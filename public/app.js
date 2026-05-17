@@ -32,19 +32,21 @@ let localStream = null;
 let monitorTimer = null;
 
 const bitrateLadder = [
-  { label: "720p", maxBitrate: 2_500_000 },
-  { label: "1080p", maxBitrate: 5_000_000 },
-  { label: "1080p+", maxBitrate: 8_000_000 },
-  { label: "Ultra", maxBitrate: 12_000_000 }
+  { label: "Stable", maxBitrate: 2_800_000, maxFramerate: 30, scaleResolutionDownBy: 1.5 },
+  { label: "Smooth", maxBitrate: 4_500_000, maxFramerate: 45, scaleResolutionDownBy: 1.25 },
+  { label: "HD", maxBitrate: 6_500_000, maxFramerate: 45, scaleResolutionDownBy: 1 },
+  { label: "HD+", maxBitrate: 8_500_000, maxFramerate: 45, scaleResolutionDownBy: 1 }
 ];
-const defaultBitrateLevel = bitrateLadder.length - 1;
+const defaultBitrateLevel = 2;
 const highQualityAudioBitrate = 320_000;
 
 const rtcConfig = {
   iceServers: window.NATIVE_SYNC_CONFIG?.iceServers || [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:global.stun.twilio.com:3478" }
-  ]
+  ],
+  bundlePolicy: "max-bundle",
+  rtcpMuxPolicy: "require"
 };
 
 function setStatus(text, mode = "neutral") {
@@ -115,12 +117,13 @@ async function applyBitrate(peer, level) {
   const sender = getVideoSender(peer);
   if (!sender) return;
 
+  const quality = bitrateLadder[level];
   const params = sender.getParameters();
   params.degradationPreference = "balanced";
   params.encodings = params.encodings?.length ? params.encodings : [{}];
-  params.encodings[0].maxBitrate = bitrateLadder[level].maxBitrate;
-  params.encodings[0].maxFramerate = 60;
-  params.encodings[0].scaleResolutionDownBy = 1;
+  params.encodings[0].maxBitrate = quality.maxBitrate;
+  params.encodings[0].maxFramerate = quality.maxFramerate;
+  params.encodings[0].scaleResolutionDownBy = quality.scaleResolutionDownBy;
   await sender.setParameters(params);
 }
 
@@ -226,11 +229,16 @@ function startHostMonitoring() {
         rtt: 0,
         lastChange: 0,
         badSamples: 0,
-        goodSamples: 0
+        goodSamples: 0,
+        lastDroppedFrames: 0,
+        lastFreezeCount: 0
       };
       const stats = await peer.getStats();
       let rtt = 0;
       let limitation = "none";
+      let framesPerSecond = 0;
+      let droppedFrames = 0;
+      let freezeCount = 0;
 
       stats.forEach((report) => {
         if (report.type === "candidate-pair" && report.state === "succeeded" && report.currentRoundTripTime) {
@@ -238,21 +246,28 @@ function startHostMonitoring() {
         }
         if (report.type === "outbound-rtp" && report.kind === "video") {
           limitation = report.qualityLimitationReason || "none";
+          framesPerSecond = report.framesPerSecond || 0;
+          droppedFrames = report.framesDropped || 0;
+          freezeCount = report.freezeCount || 0;
         }
       });
 
       const now = Date.now();
-      const canChange = now - health.lastChange > 9000;
+      const canChange = now - health.lastChange > 7000;
       let nextLevel = health.level;
-      const isBad = rtt > 0.85 || limitation === "bandwidth";
-      const isGood = rtt > 0 && rtt < 0.25 && limitation === "none";
+      const droppedDelta = Math.max(0, droppedFrames - (health.lastDroppedFrames || 0));
+      const freezeDelta = Math.max(0, freezeCount - (health.lastFreezeCount || 0));
+      const isBad = rtt > 0.55 || limitation === "bandwidth" || limitation === "cpu" || droppedDelta > 12 || freezeDelta > 0 || (framesPerSecond > 0 && framesPerSecond < 24);
+      const isGood = rtt > 0 && rtt < 0.22 && limitation === "none" && droppedDelta < 3 && freezeDelta === 0 && framesPerSecond >= 30;
 
       health.badSamples = isBad ? health.badSamples + 1 : 0;
       health.goodSamples = isGood ? health.goodSamples + 1 : 0;
+      health.lastDroppedFrames = droppedFrames;
+      health.lastFreezeCount = freezeCount;
 
       if (canChange && health.badSamples >= 2) {
         nextLevel = Math.max(0, health.level - 1);
-      } else if (canChange && health.goodSamples >= 3) {
+      } else if (canChange && health.goodSamples >= 4) {
         nextLevel = Math.min(bitrateLadder.length - 1, health.level + 1);
       }
 
@@ -294,6 +309,8 @@ function makePeerConnection(peerId) {
 
   peer.ontrack = ({ streams }) => {
     viewerVideo.srcObject = streams[0];
+    viewerVideo.preload = "auto";
+    viewerVideo.disablePictureInPicture = true;
     viewerVideo.play().catch(() => {
       playButton.classList.remove("hidden");
     });
@@ -317,7 +334,9 @@ function makePeerConnection(peerId) {
     rtt: 0,
     lastChange: 0,
     badSamples: 0,
-    goodSamples: 0
+    goodSamples: 0,
+    lastDroppedFrames: 0,
+    lastFreezeCount: 0
   });
   updatePeerStats();
   return peer;
@@ -328,7 +347,7 @@ async function beginHostShare() {
 
   const displayOptions = {
     video: {
-      frameRate: { ideal: 60, max: 60 },
+      frameRate: { ideal: 45, max: 45 },
       width: { ideal: 1920 },
       height: { ideal: 1080 }
     },
@@ -354,7 +373,7 @@ async function beginHostShare() {
   }
 
   localStream.getVideoTracks().forEach((track) => {
-    track.contentHint = "detail";
+    track.contentHint = "motion";
   });
 
   hostPreview.srcObject = localStream;
