@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Native Sync Room</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <h1>Native Sync Room</h1>
+          <p id="roomLabel">Host your screen. Viewers join with a link.</p>
+        </div>
+        <div class="status-stack">
+          <span id="connectionStatus" class="pill neutral">Idle</span>
+          <span id="viewerCount" class="viewer-count">0 viewers</span>
+        </div>
+      </section>
+
+      <section id="startPanel" class="start-panel">
+        <button id="hostButton" class="primary-button">Start hosting</button>
+        <div class="join-row">
+          <input id="roomInput" type="text" autocomplete="off" placeholder="Paste a room link or ID">
+          <button id="joinButton" class="secondary-button">Join</button>
+        </div>
+      </section>
+
+      <section id="roomPanel" class="room-panel hidden">
+        <div class="stage">
+          <video id="viewerVideo" playsinline autoplay></video>
+          <video id="hostPreview" playsinline autoplay muted></video>
+          <div id="emptyState" class="empty-state">
+            <strong>Waiting for the host stream</strong>
+            <span>The video starts automatically when the host shares.</span>
+          </div>
+        </div>
+
+        <aside class="control-panel">
+          <div class="field-group">
+            <label for="shareLink">Viewer link</label>
+            <div class="copy-row">
+              <input id="shareLink" readonly>
+              <button id="copyButton" class="icon-button" title="Copy link">Copy</button>
+            </div>
+          </div>
+
+          <div class="host-controls">
+            <button id="shareScreenButton" class="primary-button">Share screen</button>
+            <button id="stopButton" class="secondary-button">Stop</button>
+          </div>
+
+          <div class="stats-grid">
+            <div>
+              <span>Role</span>
+              <strong id="roleStat">-</strong>
+            </div>
+            <div>
+              <span>Stream</span>
+              <strong id="streamStat">Offline</strong>
+            </div>
+            <div>
+              <span>Peers</span>
+              <strong id="peerStat">0</strong>
+            </div>
+            <div>
+              <span>Quality</span>
+              <strong id="qualityStat">Auto</strong>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/config.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

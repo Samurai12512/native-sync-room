@@ -1,0 +1,270 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d1017;
+  --panel: #171b24;
+  --panel-strong: #202633;
+  --text: #f4f7fb;
+  --muted: #a7b0be;
+  --line: #303746;
+  --accent: #23c7a7;
+  --accent-strong: #16a488;
+  --danger: #f06a6a;
+  --shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(35, 199, 167, 0.14), transparent 34rem),
+    linear-gradient(135deg, #0d1017 0%, #111827 52%, #10151f 100%);
+  color: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 4.5rem);
+  line-height: 0.95;
+}
+
+p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.status-stack {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pill,
+.viewer-count {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pill.live {
+  border-color: rgba(35, 199, 167, 0.65);
+  color: var(--text);
+  background: rgba(35, 199, 167, 0.12);
+}
+
+.pill.error {
+  border-color: rgba(240, 106, 106, 0.65);
+  color: var(--text);
+  background: rgba(240, 106, 106, 0.12);
+}
+
+.start-panel,
+.room-panel {
+  background: rgba(23, 27, 36, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.start-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 14px;
+  padding: 16px;
+}
+
+.join-row,
+.copy-row,
+.host-controls {
+  display: flex;
+  gap: 10px;
+}
+
+input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--text);
+  background: #0f141d;
+  outline: none;
+}
+
+input:focus {
+  border-color: rgba(35, 199, 167, 0.7);
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 12px 16px;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.primary-button {
+  background: var(--accent-strong);
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.secondary-button,
+.icon-button {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+}
+
+.secondary-button:hover:not(:disabled),
+.icon-button:hover:not(:disabled) {
+  background: #2a3140;
+}
+
+.room-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  padding: 16px;
+}
+
+.stage {
+  position: relative;
+  min-height: 520px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #07090d;
+  border: 1px solid var(--line);
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #07090d;
+}
+
+#hostPreview {
+  display: none;
+}
+
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state strong {
+  color: var(--text);
+}
+
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.stats-grid div {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.stats-grid span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stats-grid strong {
+  font-size: 1.2rem;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 840px) {
+  .topbar,
+  .start-panel,
+  .room-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .status-stack {
+    align-items: flex-start;
+  }
+
+  .stage {
+    min-height: 340px;
+  }
+
+  .join-row,
+  .copy-row,
+  .host-controls {
+    flex-direction: column;
+  }
+}
