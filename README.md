@@ -99,6 +99,7 @@ For serious use, put TLS certificates on coturn and use `turns:` as well as `tur
 - Uses WebRTC for low-latency host-to-viewer streaming.
 - Uses Socket.IO only for room signaling.
 - Sends screen video and optional tab/system audio when the browser allows it.
+- Streams app windows like mpv through the browser's window/screen picker.
 - Lets new viewers join an existing host stream automatically.
 - Adapts host bitrate per viewer using WebRTC connection stats.
 - Starts at smooth HD and adjusts quality when WebRTC reports stutter, freezes, or bandwidth pressure.
@@ -107,6 +108,8 @@ For serious use, put TLS certificates on coturn and use `turns:` as well as `tur
 ## Browser limits
 
 Browsers intentionally require the host to approve screen sharing. A program cannot silently capture your screen from a web page without that permission prompt.
+
+To stream a desktop app such as mpv, click **Share app/window** and pick that app's window in the browser picker. If you need app/system audio, Chrome or Edge on Windows usually works best when sharing a tab or full screen with audio enabled. Some OS/browser combinations do not expose per-app audio to web pages; a future native desktop host app would be needed for deeper per-app audio capture.
 
 For internet use beyond your own machine, deploy the server to a public HTTPS host and add a TURN server. TURN is what keeps WebRTC reliable when viewers are behind strict Wi-Fi, school, work, hotel, or cellular networks.
 

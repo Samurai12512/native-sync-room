@@ -13,8 +13,10 @@ const hostPreview = document.querySelector("#hostPreview");
 const emptyState = document.querySelector("#emptyState");
 const shareLink = document.querySelector("#shareLink");
 const copyButton = document.querySelector("#copyButton");
+const shareAppButton = document.querySelector("#shareAppButton");
 const shareScreenButton = document.querySelector("#shareScreenButton");
 const stopButton = document.querySelector("#stopButton");
+const shareHint = document.querySelector("#shareHint");
 const playButton = document.querySelector("#playButton");
 const fullscreenButton = document.querySelector("#fullscreenButton");
 const roleStat = document.querySelector("#roleStat");
@@ -63,7 +65,9 @@ function setRoomView(nextRole, nextRoomId) {
   roomLabel.textContent = `Room ${roomId}`;
   roleStat.textContent = role === "host" ? "Host" : "Viewer";
   shareScreenButton.hidden = role !== "host";
+  shareAppButton.hidden = role !== "host";
   stopButton.hidden = role !== "host";
+  shareHint.hidden = role !== "host";
   hostPreview.style.display = role === "host" ? "block" : "none";
   viewerVideo.style.display = role === "viewer" ? "block" : "none";
   updatePeerStats();
@@ -342,14 +346,15 @@ function makePeerConnection(peerId) {
   return peer;
 }
 
-async function beginHostShare() {
+async function beginHostShare(mode = "screen") {
   if (localStream) return;
 
   const displayOptions = {
     video: {
       frameRate: { ideal: 45, max: 45 },
       width: { ideal: 1920 },
-      height: { ideal: 1080 }
+      height: { ideal: 1080 },
+      displaySurface: mode === "window" ? "window" : "monitor"
     },
     audio: {
       channelCount: { ideal: 2 },
@@ -377,12 +382,15 @@ async function beginHostShare() {
   });
 
   hostPreview.srcObject = localStream;
+  const [videoTrack] = localStream.getVideoTracks();
+  const sourceName = videoTrack?.label || (mode === "window" ? "App window" : "Screen");
   emptyState.classList.add("hidden");
-  streamStat.textContent = "Live";
+  streamStat.textContent = sourceName.length > 18 ? `${sourceName.slice(0, 18)}...` : sourceName;
   setStatus("Sharing", "live");
   shareScreenButton.disabled = true;
+  shareAppButton.disabled = true;
 
-  localStream.getVideoTracks()[0]?.addEventListener("ended", stopHostShare);
+  videoTrack?.addEventListener("ended", stopHostShare);
 
   for (const [viewerId, peer] of peers) {
     await addLocalTracks(peer);
@@ -401,6 +409,7 @@ function stopHostShare() {
   hostPreview.srcObject = null;
   streamStat.textContent = "Offline";
   shareScreenButton.disabled = false;
+  shareAppButton.disabled = false;
   setStatus("Stopped", "neutral");
   stopHostMonitoring();
 }
@@ -455,7 +464,11 @@ fullscreenButton.addEventListener("click", async () => {
   }
   await target.requestFullscreen();
 });
-shareScreenButton.addEventListener("click", () => beginHostShare().catch((error) => {
+shareAppButton.addEventListener("click", () => beginHostShare("window").catch((error) => {
+  console.error(error);
+  setStatus("Share blocked", "error");
+}));
+shareScreenButton.addEventListener("click", () => beginHostShare("screen").catch((error) => {
   console.error(error);
   setStatus("Share blocked", "error");
 }));
