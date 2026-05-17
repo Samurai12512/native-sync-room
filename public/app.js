@@ -38,6 +38,7 @@ const bitrateLadder = [
   { label: "Ultra", maxBitrate: 12_000_000 }
 ];
 const defaultBitrateLevel = bitrateLadder.length - 1;
+const highQualityAudioBitrate = 320_000;
 
 const rtcConfig = {
   iceServers: window.NATIVE_SYNC_CONFIG?.iceServers || [
@@ -106,6 +107,10 @@ function getVideoSender(peer) {
   return peer.getSenders().find((sender) => sender.track?.kind === "video");
 }
 
+function getAudioSender(peer) {
+  return peer.getSenders().find((sender) => sender.track?.kind === "audio");
+}
+
 async function applyBitrate(peer, level) {
   const sender = getVideoSender(peer);
   if (!sender) return;
@@ -117,6 +122,80 @@ async function applyBitrate(peer, level) {
   params.encodings[0].maxFramerate = 60;
   params.encodings[0].scaleResolutionDownBy = 1;
   await sender.setParameters(params);
+}
+
+async function applyAudioQuality(peer) {
+  const sender = getAudioSender(peer);
+  if (!sender) return;
+
+  const params = sender.getParameters();
+  params.encodings = params.encodings?.length ? params.encodings : [{}];
+  params.encodings[0].maxBitrate = highQualityAudioBitrate;
+  await sender.setParameters(params);
+}
+
+function preferHighQualityOpus(description) {
+  if (!description?.sdp) return description;
+
+  const lines = description.sdp.split("\r\n");
+  const opusRtpmap = lines.find((line) => /^a=rtpmap:\d+ opus\/48000\/2$/i.test(line));
+  if (!opusRtpmap) return description;
+
+  const opusPayload = opusRtpmap.match(/^a=rtpmap:(\d+)/)?.[1];
+  if (!opusPayload) return description;
+
+  const fmtpPrefix = `a=fmtp:${opusPayload}`;
+  const opusSettings = [
+    "stereo=1",
+    "sprop-stereo=1",
+    "maxaveragebitrate=510000",
+    "useinbandfec=1",
+    "usedtx=0",
+    "cbr=0"
+  ];
+
+  const nextLines = lines.map((line) => {
+    if (!line.startsWith(fmtpPrefix)) return line;
+
+    const [prefix, values = ""] = line.split(" ");
+    const existing = new Map(
+      values
+        .split(";")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => {
+          const [key, value = ""] = item.split("=");
+          return [key, value];
+        })
+    );
+
+    opusSettings.forEach((setting) => {
+      const [key, value] = setting.split("=");
+      existing.set(key, value);
+    });
+
+    return `${prefix} ${[...existing].map(([key, value]) => `${key}=${value}`).join(";")}`;
+  });
+
+  if (!nextLines.some((line) => line.startsWith(fmtpPrefix))) {
+    const rtpmapIndex = nextLines.indexOf(opusRtpmap);
+    nextLines.splice(rtpmapIndex + 1, 0, `${fmtpPrefix} ${opusSettings.join(";")}`);
+  }
+
+  return {
+    type: description.type,
+    sdp: nextLines.join("\r\n")
+  };
+}
+
+async function createHighQualityOffer(peer) {
+  const offer = await peer.createOffer();
+  return preferHighQualityOpus(offer);
+}
+
+async function createHighQualityAnswer(peer) {
+  const answer = await peer.createAnswer();
+  return preferHighQualityOpus(answer);
 }
 
 async function addLocalTracks(peer) {
@@ -132,6 +211,7 @@ async function addLocalTracks(peer) {
   }
 
   await applyBitrate(peer, peerHealth.get(peer)?.level ?? defaultBitrateLevel);
+  await applyAudioQuality(peer);
 }
 
 function startHostMonitoring() {
@@ -246,14 +326,32 @@ function makePeerConnection(peerId) {
 async function beginHostShare() {
   if (localStream) return;
 
-  localStream = await navigator.mediaDevices.getDisplayMedia({
+  const displayOptions = {
     video: {
       frameRate: { ideal: 60, max: 60 },
       width: { ideal: 1920 },
       height: { ideal: 1080 }
     },
-    audio: true
-  });
+    audio: {
+      channelCount: { ideal: 2 },
+      sampleRate: { ideal: 48000 },
+      sampleSize: { ideal: 16 },
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      suppressLocalAudioPlayback: false
+    }
+  };
+
+  try {
+    localStream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
+  } catch (error) {
+    if (error.name !== "OverconstrainedError" && error.name !== "TypeError") throw error;
+    localStream = await navigator.mediaDevices.getDisplayMedia({
+      ...displayOptions,
+      audio: true
+    });
+  }
 
   localStream.getVideoTracks().forEach((track) => {
     track.contentHint = "detail";
@@ -269,7 +367,7 @@ async function beginHostShare() {
 
   for (const [viewerId, peer] of peers) {
     await addLocalTracks(peer);
-    const offer = await peer.createOffer();
+    const offer = await createHighQualityOffer(peer);
     await peer.setLocalDescription(offer);
     socket.emit("webrtc-offer", { viewerId, description: peer.localDescription });
   }
@@ -293,7 +391,7 @@ async function createOfferForViewer(viewerId) {
   if (!localStream) return;
 
   await addLocalTracks(peer);
-  const offer = await peer.createOffer();
+  const offer = await createHighQualityOffer(peer);
   await peer.setLocalDescription(offer);
   socket.emit("webrtc-offer", { viewerId, description: peer.localDescription });
   startHostMonitoring();
@@ -371,7 +469,7 @@ socket.on("room-updated", (room) => {
 socket.on("webrtc-offer", async ({ hostId, description }) => {
   const peer = makePeerConnection(hostId);
   await peer.setRemoteDescription(description);
-  const answer = await peer.createAnswer();
+  const answer = await createHighQualityAnswer(peer);
   await peer.setLocalDescription(answer);
   socket.emit("webrtc-answer", { hostId, description: peer.localDescription });
 });
